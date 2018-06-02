@@ -45,12 +45,6 @@ void QuadControl::Init()
 
   minMotorThrust = config->Get(_config + ".minMotorThrust", 0);
   maxMotorThrust = config->Get(_config + ".maxMotorThrust", 100);
-
-  kappa = config->Get(_config + ".kappa", 0.016);
-  L = config->Get(_config + ".L", 0.17);
-  Ixx = config->Get(_config + ".Ixx", 0.0023);
-  Iyy = config->Get(_config + ".Iyy", 0.0023);
-  Izz = config->Get(_config + ".Izz", 0.0023);
 #else
   // load params from PX4 parameter system
   //TODO
@@ -91,6 +85,7 @@ VehicleCommand QuadControl::GenerateMotorCommands(float collThrustCmd, V3F momen
   cmd.desiredThrustsN[2] = CONSTRAIN(F2, minMotorThrust, maxMotorThrust);
   cmd.desiredThrustsN[3] = CONSTRAIN(F3, minMotorThrust, maxMotorThrust);
   /////////////////////////////// END STUDENT CODE ////////////////////////////
+
   return cmd;
 }
 
@@ -205,20 +200,17 @@ float QuadControl::AltitudeControl(float posZCmd, float velZCmd, float posZ, flo
   float z_err = posZCmd - posZ;
   float z_term = kpPosZ * z_err;
 
-  // TODO dt
-  //float z_dot_cmd = z_term * z_err + velZCmd * dt;
+  integratedAltitudeError += z_err * dt;
+  float i_term = KiPosZ * integratedAltitudeError;
 
-  float z_dot_cmd = z_term + velZCmd;
+  float z_dot_cmd = z_term + i_term + velZCmd;
   z_dot_cmd = CONSTRAIN(z_dot_cmd, -maxDescentRate, maxAscentRate);
 
   float z_dot_err = z_dot_cmd - velZ;
   float z_dot_term = kpVelZ * z_dot_err;
   float z_dot_dot_cmd = z_dot_term + accelZCmd;
 
-  // TODO CHOOSE GRAVITY
   thrust = -(z_dot_dot_cmd - CONST_GRAVITY) * mass / R(2,2);
-  //thrust = -(z_dot_dot_cmd) * mass / R(2,2);
-  thrust = CONSTRAIN(thrust, 0.0, maxMotorThrust);
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
   return thrust;
@@ -256,24 +248,20 @@ V3F QuadControl::LateralPositionControl(V3F posCmd, V3F velCmd, V3F pos, V3F vel
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
   V3F pos_err = posCmd - pos;
   V3F pos_term = kpPosXY * pos_err;
-  V3F pos_dot_cmd = pos_term + velCmd;
+  V3F vel_cmd = pos_term;
 
-  float vel_norm = sqrt(pow(pos_dot_cmd[0],2) + pow(pos_dot_cmd[1],2));
+  float vel_norm = sqrt(pow(vel_cmd[0],2) + pow(vel_cmd[1],2));
   if (vel_norm > maxSpeedXY) {
-    pos_dot_cmd = pos_dot_cmd * maxSpeedXY / vel_norm;
+    vel_cmd = vel_cmd * maxSpeedXY / vel_norm;
   }
-  V3F vel_err = pos_dot_cmd - vel;
+  V3F vel_err = velCmd - vel;
   V3F vel_term = kpVelXY * vel_err;
-
-  // TODO pos_term
-  //V3F acc_cmd = accelCmdFF + pos_term + vel_term;
-  V3F acc_cmd = accelCmdFF + vel_term;
-
+  V3F acc_cmd = accelCmdFF + pos_term + vel_term;
   float acc_norm = sqrt(pow(acc_cmd[0],2) + pow(acc_cmd[1],2));
   if (acc_norm > maxAccelXY) {
     acc_cmd = acc_cmd * maxAccelXY / acc_norm;
   }
-  accelCmd = acc_cmd;
+  accelCmd += acc_cmd;
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
   return accelCmd;
