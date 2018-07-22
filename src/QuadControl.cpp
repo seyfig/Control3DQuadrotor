@@ -85,7 +85,6 @@ VehicleCommand QuadControl::GenerateMotorCommands(float collThrustCmd, V3F momen
   cmd.desiredThrustsN[2] = CONSTRAIN(F2, minMotorThrust, maxMotorThrust);
   cmd.desiredThrustsN[3] = CONSTRAIN(F3, minMotorThrust, maxMotorThrust);
   /////////////////////////////// END STUDENT CODE ////////////////////////////
-
   return cmd;
 }
 
@@ -111,7 +110,6 @@ V3F QuadControl::BodyRateControl(V3F pqrCmd, V3F pqr)
   V3F pqrU_bar = kpPQR * pqrErr;
   momentCmd = inertia * pqrU_bar;
   /////////////////////////////// END STUDENT CODE ////////////////////////////
-
   return momentCmd;
 }
 
@@ -243,27 +241,26 @@ V3F QuadControl::LateralPositionControl(V3F posCmd, V3F velCmd, V3F pos, V3F vel
   // we initialize the returned desired acceleration to the feed-forward value.
   // Make sure to _add_, not simply replace, the result of your controller
   // to this variable
-  V3F accelCmd = accelCmdFF;
+  V3F accelCmd;
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
   V3F pos_err = posCmd - pos;
   V3F pos_term = kpPosXY * pos_err;
-  V3F vel_cmd = velCmd;
+  V3F vel_cmd = velCmd + pos_term;
 
-  float vel_norm = sqrt(pow(vel_cmd[0],2) + pow(vel_cmd[1],2));
+  float vel_norm = vel_cmd.mag();
   if (vel_norm > maxSpeedXY) {
     vel_cmd = vel_cmd * maxSpeedXY / vel_norm;
   }
-  V3F vel_err = velCmd - vel;
+  V3F vel_err = vel_cmd - vel;
   V3F vel_term = kpVelXY * vel_err;
-  V3F acc_cmd = accelCmdFF + pos_term + vel_term;
-  float acc_norm = sqrt(pow(acc_cmd[0],2) + pow(acc_cmd[1],2));
+  V3F acc_cmd = accelCmdFF + vel_term;
+  float acc_norm = acc_cmd.mag();
   if (acc_norm > maxAccelXY) {
     acc_cmd = acc_cmd * maxAccelXY / acc_norm;
   }
-  accelCmd += acc_cmd;
+  accelCmd = acc_cmd;
   /////////////////////////////// END STUDENT CODE ////////////////////////////
-
   return accelCmd;
 }
 
@@ -292,7 +289,6 @@ float QuadControl::YawControl(float yawCmd, float yaw)
   }
   yawRateCmd = kpYaw * psi_err;
   /////////////////////////////// END STUDENT CODE ////////////////////////////
-
   return yawRateCmd;
 
 }
