@@ -27,3 +27,5 @@ bld/
 # manual cmake build ignores
 build/
 build-CPPSim-Desktop-Debug/
+
+project/CPPSim.pro.user
